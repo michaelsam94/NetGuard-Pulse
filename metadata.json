@@ -1,0 +1,6 @@
+{
+  "name": "NetGuard Pulse",
+  "description": "Un-intrusive on-device firewall and network traffic analyzer separating your Wi-Fi and mobile performance layer details and DNS domain blocking list.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
