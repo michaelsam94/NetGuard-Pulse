@@ -18,7 +18,7 @@ import com.michael.netguardplus.R
  * client or session alerts are configured.
  *
  * When the process is alive the [HotspotRepositoryImpl] monitoring loop
- * continues to run and will fire the limit-reached notification even if the
+ * continues to run and will fire the alert-reached notification even if the
  * user has navigated away from the app.
  */
 class HotspotLimitGuardService : Service() {
@@ -29,7 +29,7 @@ class HotspotLimitGuardService : Service() {
         super.onCreate()
         createChannel()
         startForeground(NOTIF_ID, buildNotification())
-        Log.i(TAG, "Hotspot limit guard service started")
+        Log.i(TAG, "Hotspot alert guard service started")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -43,7 +43,7 @@ class HotspotLimitGuardService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
-        Log.i(TAG, "Hotspot limit guard service destroyed")
+        Log.i(TAG, "Hotspot alert guard service destroyed")
     }
 
     // ── notification ────────────────────────────────────────────────────────
@@ -91,7 +91,7 @@ class HotspotLimitGuardService : Service() {
     // ── companion ────────────────────────────────────────────────────────────
 
     companion object {
-        private const val TAG = "HotspotLimitGuard"
+        private const val TAG = "HotspotAlertGuard"
         private const val NOTIF_ID = 22_000
         const val CHANNEL_ID = "hotspot_limit_guard_channel"
         private const val ACTION_STOP = "com.michael.netguardplus.action.STOP_LIMIT_GUARD"
@@ -106,7 +106,7 @@ class HotspotLimitGuardService : Service() {
                 }
                 Log.i(TAG, "start() called")
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to start limit guard service", e)
+                Log.e(TAG, "Failed to start hotspot alert guard service", e)
             }
         }
 
@@ -118,7 +118,7 @@ class HotspotLimitGuardService : Service() {
                 context.startService(intent)
                 Log.i(TAG, "stop() called")
             } catch (e: Exception) {
-                Log.w(TAG, "Could not stop limit guard service: ${e.message}")
+                Log.w(TAG, "Could not stop hotspot alert guard service: ${e.message}")
             }
         }
     }

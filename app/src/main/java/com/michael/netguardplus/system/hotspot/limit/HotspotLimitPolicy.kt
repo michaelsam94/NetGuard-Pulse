@@ -1,8 +1,8 @@
 package com.michael.netguardplus.system.hotspot.limit
 
 /**
- * Shared rules for hotspot data limits (repository + captive portal).
- * [manualBlock] is the persisted user flag; limit enforcement is derived from usage.
+ * Shared rules for hotspot client blocking.
+ * Usage thresholds are notification-only alerts; only a manual block restricts access.
  */
 object HotspotLimitPolicy {
 
@@ -16,5 +16,5 @@ object HotspotLimitPolicy {
         rxBytes: Long,
         txBytes: Long,
         limitBytes: Long?
-    ): Boolean = manualBlock || isLimitReached(rxBytes, txBytes, limitBytes)
+    ): Boolean = manualBlock
 }

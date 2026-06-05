@@ -1129,7 +1129,7 @@ fun AlertsTabContent(
         if (state.dataAlerts.isEmpty()) {
             item {
                 Text(
-                    text = "No limits active. System is fully unconstrained.",
+                    text = "No alerts active. Monitoring is running without thresholds.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.outline
                 )
@@ -1757,7 +1757,7 @@ fun HotspotTabContent(
                             text = if (state.isDnsActive) {
                                 "Blocked in-app: MAC block when available, otherwise IP block (captive portal + VPN routes)."
                             } else {
-                                "Blocked in-app: limits enforce by IP on this device when MAC cannot be resolved."
+                                "Blocked in-app: manual blocks can restrict access by IP when MAC cannot be resolved."
                             },
                             style = MaterialTheme.typography.labelSmall.copy(
                                 color = MaterialTheme.colorScheme.error.copy(alpha = 0.85f)
@@ -1887,23 +1887,25 @@ fun HotspotTabContent(
         }
     }
 
-    // Limit configuration dialog
+    // Device alert configuration dialog
     if (selectedClientForLimit != null) {
         val client = selectedClientForLimit!!
         AlertDialog(
             onDismissRequest = { selectedClientForLimit = null },
-            title = { Text(text = "Configure Bandwidth Limit") },
+            title = { Text(text = "Configure Device Data Alert") },
             text = {
                 Column {
                     Text(
-                        text = "Set a data transfer limit for ${client.deviceName} (${client.macAddress}). The device will be blocked from accessing the network once this limit is exceeded.",
+                        text = "Set a data-usage alert for ${client.deviceName} (${client.macAddress}). " +
+                            "When this threshold is reached, NetGuard Pulse sends a notification only. " +
+                            "It does not block the device, slow bandwidth, or turn off hotspot/mobile data.",
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     OutlinedTextField(
                         value = limitInput,
                         onValueChange = { limitInput = it },
-                        label = { Text("Limit in Megabytes (MB)") },
+                        label = { Text("Alert threshold (MB)") },
                         placeholder = { Text("e.g. 100") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
@@ -1920,7 +1922,7 @@ fun HotspotTabContent(
                         selectedClientForLimit = null
                     }
                 ) {
-                    Text("Save Limit")
+                    Text("Save Alert")
                 }
             },
             dismissButton = {
@@ -1932,7 +1934,7 @@ fun HotspotTabContent(
                                 selectedClientForLimit = null
                             }
                         ) {
-                            Text("Remove Limit", color = MaterialTheme.colorScheme.error)
+                            Text("Remove Alert", color = MaterialTheme.colorScheme.error)
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                     }
@@ -2108,7 +2110,7 @@ fun HotspotClientRowItem(
     onResetUsage: () -> Unit
 ) {
     val totalUsed = client.rxBytes + client.txBytes
-    val limitText = client.limitBytes?.let { formatBytes(it) } ?: "No Limit"
+    val limitText = client.limitBytes?.let { formatBytes(it) } ?: "No Alert"
 
     Card(
         shape = RoundedCornerShape(12.dp),
@@ -2215,7 +2217,7 @@ fun HotspotClientRowItem(
                 IconButton(onClick = onSetLimitClick) {
                     Icon(
                         imageVector = Icons.Default.Edit,
-                        contentDescription = "Set Limit",
+                        contentDescription = "Set Alert",
                         tint = MaterialTheme.colorScheme.primary
                     )
                 }
@@ -2271,7 +2273,7 @@ fun HotspotClientRowItem(
                 }
             }
 
-            // Progress Bar if limit is configured
+            // Alert progress if a per-device threshold is configured.
             if (client.limitBytes != null) {
                 Spacer(modifier = Modifier.height(8.dp))
                 val progress = (totalUsed.toFloat() / client.limitBytes.toFloat()).coerceIn(0f, 1f)
@@ -2308,8 +2310,8 @@ fun HotspotClientRowItem(
                     Text("Reset", fontSize = 12.sp)
                 }
                 // Blocking a client only works on rooted devices, so the Block action is
-                // hidden when the device is not rooted. Unblock stays available so an
-                // already-blocked client (e.g. from an exceeded limit) can be restored.
+                // hidden when the device is not rooted. Unblock stays available for
+                // clients blocked manually.
                 if (isDeviceRooted || client.isBlocked) {
                     OutlinedButton(
                         onClick = onToggleBlock,

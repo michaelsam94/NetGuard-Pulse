@@ -28,9 +28,9 @@ import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Runs a local DNS + HTTP captive portal on the hotspot gateway when clients hit their data limit.
+ * Runs a local DNS + HTTP captive portal on the hotspot gateway for manually blocked clients.
  * Works without root: clients use the gateway as DNS (via DHCP); blocked clients are redirected
- * to the limit-reached page hosted on the phone.
+ * to the local blocked-device page hosted on the phone.
  */
 class HotspotCaptivePortalService : Service() {
 

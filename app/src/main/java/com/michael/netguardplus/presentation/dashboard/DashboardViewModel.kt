@@ -202,8 +202,8 @@ class DashboardViewModel(
                 }
                 is DashboardIntent.SetHotspotLimit -> {
                     hotspotRepo.setClientLimit(intent.macAddress, intent.limitBytes)
-                    val limitStr = intent.limitBytes?.let { "${it / 1024L / 1024L} MB" } ?: "removed"
-                    _effects.emit(DashboardEffect.ShowToast("Limit for ${intent.macAddress} set to $limitStr."))
+                    val threshold = intent.limitBytes?.let { "${it / 1024L / 1024L} MB" } ?: "removed"
+                    _effects.emit(DashboardEffect.ShowToast("Alert for ${intent.macAddress} set to $threshold."))
                 }
                 is DashboardIntent.SetHotspotBlocked -> {
                     if (intent.isBlocked) {

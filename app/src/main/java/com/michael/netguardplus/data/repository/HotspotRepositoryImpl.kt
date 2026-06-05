@@ -136,10 +136,10 @@ class HotspotRepositoryImpl(
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 HOTSPOT_CHANNEL_ID,
-                "Hotspot Limit Warnings",
+                "Hotspot Data Alerts",
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = "Notifies when connected hotspot devices exceed their data usage limit."
+                description = "Notifies when connected hotspot devices reach data usage alert thresholds."
             }
             notificationManager.createNotificationChannel(channel)
         }
@@ -239,15 +239,15 @@ class HotspotRepositoryImpl(
 
     override suspend fun setClientLimit(mac: String, limitBytes: Long?) {
         hotspotDao.setLimit(mac, limitBytes)
-        // Keep the process alive so the monitoring loop can fire limit-reached
+        // Keep the process alive so the monitoring loop can fire alert-reached
         // notifications even when the user has navigated away from the app.
         refreshHotspotGuardService()
     }
 
     private suspend fun refreshHotspotGuardService() {
-        val anyClientLimitActive = hotspotDao.getAllClients().any { it.limitBytes != null }
+        val anyClientAlertActive = hotspotDao.getAllClients().any { it.limitBytes != null }
         val anySessionAlertActive = sessionStore.config.value.autoOffEnabled && sessionStore.config.value.hasAnyLimit
-        if (anyClientLimitActive || anySessionAlertActive) {
+        if (anyClientAlertActive || anySessionAlertActive) {
             HotspotLimitGuardService.start(context)
         } else {
             HotspotLimitGuardService.stop(context)
@@ -265,7 +265,7 @@ class HotspotRepositoryImpl(
         if (blocked) {
             currentSpeeds[mac] = SpeedData(0L, 0L)
             hotspotDao.getClient(mac)?.let { client ->
-                enforceDnsCaptiveBlock(
+                notifyManualHotspotBlock(
                     client,
                     "Device blocked in-app — Wi‑Fi access restricted."
                 )
@@ -556,9 +556,10 @@ class HotspotRepositoryImpl(
                     isBlocked = false,
                     lastSeenMs = now
                 )
-                enforceDnsCaptiveBlock(
+                notifyDeviceDataAlertReached(
                     blockedEntity,
-                    "Data limit reached (${formatBytes(totalUsed)} / ${formatBytes(limitBytes!!)}) — browsing redirected to limit page."
+                    "Device data alert reached (${formatBytes(totalUsed)} / ${formatBytes(limitBytes!!)}). " +
+                        "Hotspot access, bandwidth, and mobile data remain unchanged."
                 )
             }
 
@@ -741,14 +742,7 @@ class HotspotRepositoryImpl(
     }
 
     private fun onHotspotClientDetected(@Suppress("UNUSED_PARAMETER") clientIp: String) {
-        // MAC resolution requires system permissions; IP-only enforcement handles limits.
-    }
-
-    private fun notifyIpOnlyLimitEnforcement(client: HotspotClientEntity, dataUsed: String) {
-        val message =
-            "Limit reached for ${client.deviceName} (${client.ipAddress}). " +
-                "Blocking by IP — browsing is restricted until you reset usage or unblock."
-        notifyInAppBlockEnforced(client, message)
+        // MAC resolution requires system permissions; manual IP blocking is handled separately.
     }
 
     private suspend fun ensureClientIpResolved(mac: String) {
@@ -772,17 +766,42 @@ class HotspotRepositoryImpl(
         )
     }
 
-    private suspend fun enforceDnsCaptiveBlock(client: HotspotClientEntity, message: String) {
+    private fun notifyDeviceDataAlertReached(client: HotspotClientEntity, message: String) {
         val now = System.currentTimeMillis()
         if (now - lastEnforcementNotifyMs < ENFORCEMENT_NOTIFY_DEBOUNCE_MS) {
             return
         }
         lastEnforcementNotifyMs = now
-        Log.i(TAG, "Data limit reached for ${client.deviceName} (${client.ipAddress})")
-        notifyInAppBlockEnforced(client, message)
+        Log.i(TAG, "Device data alert reached for ${client.deviceName} (${client.ipAddress})")
+        notifyDeviceDataAlert(client, message)
     }
 
-    private fun notifyInAppBlockEnforced(client: HotspotClientEntity, message: String) {
+    private fun notifyDeviceDataAlert(client: HotspotClientEntity, message: String) {
+        val notifId = NOTIF_BASE_ID + client.macAddress.hashCode()
+        val appIntent = Intent(context, MainActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            client.macAddress.hashCode(),
+            appIntent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
+        val notif = NotificationCompat.Builder(context, HOTSPOT_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_notification_defense)
+            .setContentTitle("Device data alert: ${client.deviceName}")
+            .setContentText(message)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(message))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+            .build()
+
+        notificationManager.notify(notifId, notif)
+    }
+
+    private fun notifyManualHotspotBlock(client: HotspotClientEntity, message: String) {
         val notifId = NOTIF_BASE_ID + client.macAddress.hashCode()
         val appIntent = Intent(context, MainActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)

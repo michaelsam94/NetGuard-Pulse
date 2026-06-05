@@ -45,10 +45,10 @@ class AlertEngine(
             val soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
             val channel = NotificationChannel(
                 ALERT_CHANNEL_ID,
-                "Bandwidth Limit Alerts",
+                "Data Usage Alerts",
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = "Notifies when local limits on Wi-Fi or cellular usage are crossed."
+                description = "Notifies when Wi-Fi or cellular usage alert thresholds are crossed."
                 enableVibration(true)
                 vibrationPattern = longArrayOf(0, 500, 200, 500)
                 setSound(
