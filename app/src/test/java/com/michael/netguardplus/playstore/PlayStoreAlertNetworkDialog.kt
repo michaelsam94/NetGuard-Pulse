@@ -50,7 +50,7 @@ fun PlayStoreAlertNetworkDialog() {
           style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
         )
         Text(
-          text = "Which connection should this limit apply to?",
+          text = "Which connection should this alert watch?",
           style = MaterialTheme.typography.bodyMedium,
         )
         Row(

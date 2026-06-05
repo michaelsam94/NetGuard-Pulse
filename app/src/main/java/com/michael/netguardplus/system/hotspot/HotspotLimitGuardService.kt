@@ -11,6 +11,7 @@ import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.michael.netguardplus.MainActivity
+import com.michael.netguardplus.NetGuardApplication
 import com.michael.netguardplus.R
 
 /**
@@ -23,27 +24,52 @@ import com.michael.netguardplus.R
  */
 class HotspotLimitGuardService : Service() {
 
+    private var stopRequested = false
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
         super.onCreate()
         createChannel()
         startForeground(NOTIF_ID, buildNotification())
+        ensureHotspotMonitoring()
         Log.i(TAG, "Hotspot alert guard service started")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
+            stopRequested = true
             Log.i(TAG, "Stop requested — stopping guard service")
             stopSelf()
             return START_NOT_STICKY
         }
+        stopRequested = false
+        ensureHotspotMonitoring()
         return START_STICKY
     }
 
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        if (!stopRequested) {
+            ensureHotspotMonitoring()
+            start(applicationContext)
+        }
+    }
+
     override fun onDestroy() {
+        if (!stopRequested) {
+            start(applicationContext)
+        }
         super.onDestroy()
         Log.i(TAG, "Hotspot alert guard service destroyed")
+    }
+
+    private fun ensureHotspotMonitoring() {
+        try {
+            (application as? NetGuardApplication)?.container?.hotspotRepository?.startMonitoring()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to start hotspot alert monitor", e)
+        }
     }
 
     // ── notification ────────────────────────────────────────────────────────

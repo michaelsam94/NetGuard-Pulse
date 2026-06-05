@@ -914,7 +914,7 @@ fun AlertsTabContent(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        text = "Which connection should this limit apply to?",
+                        text = "Which connection should this alert watch?",
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Row(
@@ -1033,11 +1033,11 @@ fun AlertsTabContent(
 
         item {
             Text(
-                text = "Create Daily Data Limit Alarm",
+                text = "Create Daily Data Alert",
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
             )
             Text(
-                text = "Triggers a high-priority ringtone/vibrator once daily usage crosses the limit. You will choose mobile data or Wi-Fi when enabling the alert.",
+                text = "Triggers a high-priority ringtone/vibrator once daily usage crosses the alert threshold. You will choose mobile data or Wi-Fi when enabling the alert.",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.outline
             )
@@ -1055,7 +1055,7 @@ fun AlertsTabContent(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Limit Target: $selectedOptionText",
+                            text = "Alert Target: $selectedOptionText",
                             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium)
                         )
                         Icon(
@@ -1121,7 +1121,7 @@ fun AlertsTabContent(
 
         item {
             Text(
-                text = "Active Limits Policy (${state.dataAlerts.size})",
+                text = "Active Data Alerts (${state.dataAlerts.size})",
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
             )
         }
@@ -1153,7 +1153,7 @@ fun AlertsTabContent(
                         Column {
                             val context = LocalContext.current
                             val alertTargetName = if (alert.uid == -1) {
-                                "Overall Daily Limit"
+                                "Overall Daily Alert"
                             } else {
                                 val pkgName = alert.packageName
                                 if (pkgName != null) {
@@ -1168,7 +1168,7 @@ fun AlertsTabContent(
                                 }
                             }
                             Text(
-                                text = "$alertTargetName Breach Alarm",
+                                text = "$alertTargetName Reached",
                                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold)
                             )
                             Spacer(modifier = Modifier.height(2.dp))
@@ -1673,6 +1673,7 @@ fun HotspotTabContent(
                 config = state.hotspotSessionConfig,
                 status = state.hotspotSessionStatus,
                 isHotspotEnabled = state.isHotspotEnabled,
+                animationsEnabled = animationsEnabled,
                 onSave = { config ->
                     onIntent(DashboardIntent.UpdateHotspotSessionConfig(config))
                 }
@@ -1953,6 +1954,7 @@ private fun HotspotSessionAutoOffCard(
     config: HotspotSessionConfig,
     status: HotspotSessionStatus,
     isHotspotEnabled: Boolean,
+    animationsEnabled: Boolean = true,
     onSave: (HotspotSessionConfig) -> Unit
 ) {
     var sessionAlertsEnabled by remember(config) { mutableStateOf(config.autoOffEnabled) }
@@ -1973,7 +1975,8 @@ private fun HotspotSessionAutoOffCard(
         mutableStateOf(System.currentTimeMillis())
     }
 
-    LaunchedEffect(status.sessionStartMs, status.isHotspotActive) {
+    LaunchedEffect(status.sessionStartMs, status.isHotspotActive, animationsEnabled) {
+        if (!animationsEnabled) return@LaunchedEffect
         while (status.isHotspotActive && status.sessionStartMs > 0L) {
             nowMs = System.currentTimeMillis()
             delay(1_000L)
