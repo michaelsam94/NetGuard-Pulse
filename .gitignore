@@ -16,3 +16,29 @@
 local.properties
 .env
 debug.keystore
+key.properties
+keystore.properties
+*.jks
+*.keystore
+release/
+# Local agent/editor state
+.build-outputs/
+.codegraph/
+.cursor/
+
+# Gradle/Android build outputs
+.gradle/
+.kotlin/
+build/
+app/build/
+app/.cxx/
+
+# Local Android/IDE files
+local.properties
+
+# Signing material and secrets
+key.properties
+*.jks
+*.keystore
+debug.keystore
+debug.keystore.base64

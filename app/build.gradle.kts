@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.kotlin.compose)
@@ -6,27 +8,64 @@ plugins {
   alias(libs.plugins.secrets)
 }
 
+if (gradle.startParameter.taskNames.any {
+    it.equals("generatePlayStoreAssets", ignoreCase = true) ||
+      it.contains("Roborazzi", ignoreCase = true)
+  }) {
+  extra["screenshot"] = true
+}
+
+fun Project.screenshotTestsEnabled(): Boolean =
+  hasProperty("screenshot") ||
+    gradle.startParameter.taskNames.any {
+      it.equals("generatePlayStoreAssets", ignoreCase = true) ||
+        it.contains("Roborazzi", ignoreCase = true)
+    }
+
+val keystorePropertiesFile = rootProject.file("key.properties")
+val keystoreProperties = Properties()
+if (keystorePropertiesFile.exists()) {
+  keystorePropertiesFile.inputStream().use { keystoreProperties.load(it) }
+}
+
 android {
-  namespace = "com.example"
+  namespace = "com.michael.netguardplus"
   compileSdk { version = release(36) { minorApiLevel = 1 } }
 
+  buildFeatures {
+    compose = true
+    buildConfig = true
+  }
+  externalNativeBuild {
+    cmake {
+      path = file("src/main/cpp/CMakeLists.txt")
+    }
+  }
   defaultConfig {
-    applicationId = "com.aistudio.netguardpulse.kxmpzq"
+    applicationId = "com.michael.netguardplus"
     minSdk = 26
     targetSdk = 36
-    versionCode = 1
-    versionName = "1.0"
+    versionCode = 6
+    versionName = "1.5"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+    ndk {
+      abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
+    }
   }
 
   signingConfigs {
     create("release") {
-      val keystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks"
-      storeFile = file(keystorePath)
+      val keystorePath = System.getenv("KEYSTORE_PATH")
+        ?: keystoreProperties.getProperty("storeFile")
+        ?: "my-upload-key.jks"
+      storeFile = rootProject.file(keystorePath)
       storePassword = System.getenv("STORE_PASSWORD")
-      keyAlias = "upload"
+        ?: keystoreProperties.getProperty("storePassword")
+      keyAlias = keystoreProperties.getProperty("keyAlias") ?: "upload"
       keyPassword = System.getenv("KEY_PASSWORD")
+        ?: keystoreProperties.getProperty("keyPassword")
     }
     create("debugConfig") {
       storeFile = file("${rootDir}/debug.keystore")
@@ -51,11 +90,46 @@ android {
     sourceCompatibility = JavaVersion.VERSION_11
     targetCompatibility = JavaVersion.VERSION_11
   }
-  buildFeatures {
-    compose = true
-    buildConfig = true
+  testOptions {
+    unitTests {
+      isIncludeAndroidResources = true
+      isReturnDefaultValues = true
+      all {
+        val screenshotTests = screenshotTestsEnabled()
+        it.inputs.property("screenshotTestsEnabled", screenshotTests.toString())
+        if (screenshotTests) {
+          it.maxParallelForks = 1
+          it.maxHeapSize = "2048m"
+          it.systemProperty("robolectric.pixelCopyRenderMode", "hardware")
+        }
+        it.useJUnit {
+          if (screenshotTests) {
+            includeCategories("com.michael.netguardplus.playstore.PlayStoreScreenshotTests")
+          } else {
+            excludeCategories("com.michael.netguardplus.playstore.PlayStoreScreenshotTests")
+          }
+        }
+      }
+    }
   }
-  testOptions { unitTests { isIncludeAndroidResources = true } }
+}
+
+tasks.withType<Test>().configureEach {
+  systemProperty("robolectric.logging.enabled", "true")
+  testLogging {
+    events("passed", "skipped", "failed")
+    showStandardStreams = false
+  }
+}
+
+roborazzi {
+  outputDir.set(file("${rootProject.projectDir}/play-store"))
+}
+
+tasks.register("generatePlayStoreAssets") {
+  group = "publishing"
+  description = "Generate Play Store screenshots and feature graphic via Roborazzi"
+  dependsOn("recordRoborazziDebug")
 }
 
 // Configure the Secrets Gradle Plugin to use .env and .env.example files
@@ -101,10 +175,13 @@ dependencies {
   // implementation(libs.play.services.location)
   implementation(libs.retrofit)
   testImplementation(libs.androidx.compose.ui.test.junit4)
+  testImplementation(libs.androidx.compose.ui.test.manifest)
   testImplementation(libs.androidx.core)
   testImplementation(libs.androidx.junit)
   testImplementation(libs.junit)
   testImplementation(libs.kotlinx.coroutines.test)
+  testImplementation(libs.mockito.core)
+  testImplementation(libs.mockito.kotlin)
   testImplementation(libs.robolectric)
   testImplementation(libs.roborazzi)
   testImplementation(libs.roborazzi.compose)

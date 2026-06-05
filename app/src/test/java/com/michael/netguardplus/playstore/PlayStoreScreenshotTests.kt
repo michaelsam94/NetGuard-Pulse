@@ -1,0 +1,3 @@
+package com.michael.netguardplus.playstore
+
+interface PlayStoreScreenshotTests
